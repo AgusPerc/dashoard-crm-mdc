@@ -848,11 +848,22 @@
         transformHeader: (header) => header.trim(),
         beforeFirstChunk: (chunk) => {
           if (!chunk) return chunk;
-          const lines = chunk.split(/\r?\n/);
-          if (lines.length && /^\s*crm\s*2025/i.test(lines[0])) {
-            return lines.slice(1).join('\n');
+          let text = chunk.replace(/^\uFEFF/, '');
+          const lines = text.split(/\r?\n/);
+          if (!lines.length) return text;
+
+          const firstLine = lines[0].replace(/^\uFEFF/, '').trim();
+          const normalized = normalizeKey(firstLine);
+
+          if (normalized.startsWith('crm_2025')) {
+            lines.shift();
+            while (lines.length && !lines[0].trim()) {
+              lines.shift();
+            }
+            text = lines.join('\n');
           }
-          return chunk;
+
+          return text;
         },
         complete: processData,
         error(error) {

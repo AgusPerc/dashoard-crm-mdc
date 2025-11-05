@@ -846,6 +846,14 @@
         header: true,
         skipEmptyLines: true,
         transformHeader: (header) => header.trim(),
+        beforeFirstChunk: (chunk) => {
+          if (!chunk) return chunk;
+          const lines = chunk.split(/\r?\n/);
+          if (lines.length && /^\s*crm\s*2025/i.test(lines[0])) {
+            return lines.slice(1).join('\n');
+          }
+          return chunk;
+        },
         complete: processData,
         error(error) {
           showAlert(`Error al leer el archivo: ${error.message}`);

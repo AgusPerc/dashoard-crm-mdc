@@ -265,6 +265,7 @@
       ya_no_contesta: 'Sin respuesta',
       ya_no_contesto: 'Sin respuesta',
       ya_no_responde: 'Sin respuesta',
+      a_definir: 'Sin respuesta',
       pendiente: 'Sin respuesta',
       abierto: 'Sin respuesta'
     };
@@ -354,12 +355,19 @@
     function deriveStatusFromRow(row, columns) {
       const faseRaw = columns.fase ? row[columns.fase] : '';
       const motivoRaw = columns.motivo ? row[columns.motivo] : '';
+
+      const faseNormalized = normalizeStatus(faseRaw);
+      if (faseNormalized !== 'Sin respuesta') {
+        return faseNormalized;
+      }
+
+      const motivoNormalized = normalizeStatus(motivoRaw);
+      if (motivoNormalized !== 'Sin respuesta') {
+        return motivoNormalized;
+      }
+
       const faseKey = normalizeKey(faseRaw || '');
       const motivoKey = normalizeKey(motivoRaw || '');
-
-      if (faseKey.includes('concret') || motivoKey.includes('concret')) {
-        return 'Concretado';
-      }
 
       const cancelKeywords = [
         'cancel',
@@ -373,6 +381,10 @@
 
       if (cancelKeywords.some((keyword) => faseKey.includes(keyword) || motivoKey.includes(keyword))) {
         return 'Cancelado';
+      }
+
+      if (faseKey.includes('concret') || motivoKey.includes('concret')) {
+        return 'Concretado';
       }
 
       if (faseKey.includes('cotiz') || faseKey.includes('contact')) {

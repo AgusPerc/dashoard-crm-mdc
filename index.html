@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Panel interactivo de leads</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'ui-sans-serif', 'system-ui'],
+          },
+          colors: {
+            brand: {
+              50: '#f5f5f4',
+              100: '#e7e5e4',
+              200: '#d6d3d1',
+              300: '#a8a29e',
+              400: '#78716c',
+              500: '#57534e',
+              900: '#1c1917',
+            },
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    body {
+      font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+    }
+    .chip-selected {
+      background: rgb(17 24 39);
+      color: white;
+    }
+    .counter-transition {
+      transition: color 0.3s ease;
+    }
+  </style>
+</head>
+<body class="min-h-full bg-brand-50 text-brand-900 antialiased">
+  <main class="mx-auto flex min-h-screen max-w-7xl flex-col gap-6 px-4 py-8 lg:flex-row">
+    <!-- Panel lateral de filtros -->
+    <aside class="flex w-full flex-col gap-6 rounded-3xl bg-white/90 p-6 shadow-lg ring-1 ring-brand-100 backdrop-blur lg:w-72">
+      <div>
+        <h1 class="text-xl font-semibold tracking-tight">Panel de seguimiento</h1>
+        <p class="mt-1 text-sm text-brand-500">Carga un CSV para explorar tus leads y filtra por canal, fase, comercial y fechas.</p>
+      </div>
+      <div>
+        <label for="file-input" class="block text-sm font-medium text-brand-500">Carga de archivo</label>
+        <div id="drop-zone" class="mt-2 flex flex-col items-center justify-center rounded-2xl border border-dashed border-brand-200 bg-brand-50/80 p-4 text-center text-sm text-brand-500 transition-all hover:border-brand-300 hover:bg-white">
+          <svg data-lucide="upload" class="h-6 w-6 text-brand-400"></svg>
+          <p class="mt-2 font-medium">Arrastra el CSV o haz clic</p>
+          <p class="text-xs text-brand-400">Estructura fija: canal, fase, comercial, fecha, estatus</p>
+          <input id="file-input" type="file" accept=".csv" class="sr-only" />
+        </div>
+        <button id="clear-data" class="mt-3 hidden w-full rounded-xl bg-brand-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-400">Eliminar datos</button>
+      </div>
+
+      <div class="space-y-6">
+        <div>
+          <div class="flex items-center justify-between">
+            <h2 class="text-sm font-semibold uppercase tracking-wide text-brand-400">Canal</h2>
+            <button data-reset="canal" class="text-xs font-medium text-brand-400 hover:text-brand-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-300">Limpiar</button>
+          </div>
+          <div id="filter-canal" class="mt-2 flex flex-wrap gap-2"></div>
+        </div>
+        <div>
+          <div class="flex items-center justify-between">
+            <h2 class="text-sm font-semibold uppercase tracking-wide text-brand-400">Fase</h2>
+            <button data-reset="fase" class="text-xs font-medium text-brand-400 hover:text-brand-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-300">Limpiar</button>
+          </div>
+          <div id="filter-fase" class="mt-2 flex flex-wrap gap-2"></div>
+        </div>
+        <div>
+          <div class="flex items-center justify-between">
+            <h2 class="text-sm font-semibold uppercase tracking-wide text-brand-400">Comercial</h2>
+            <button data-reset="comercial" class="text-xs font-medium text-brand-400 hover:text-brand-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-300">Limpiar</button>
+          </div>
+          <div id="filter-comercial" class="mt-2 flex flex-wrap gap-2"></div>
+        </div>
+        <div>
+          <h2 class="text-sm font-semibold uppercase tracking-wide text-brand-400">Rango de fechas</h2>
+          <div class="mt-2 grid grid-cols-1 gap-2 text-sm">
+            <label class="flex flex-col gap-1">
+              <span class="text-xs font-medium text-brand-400">Desde</span>
+              <input type="date" id="date-from" class="rounded-xl border border-brand-200 bg-white px-3 py-2 text-brand-600 shadow-sm transition focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-200" />
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs font-medium text-brand-400">Hasta</span>
+              <input type="date" id="date-to" class="rounded-xl border border-brand-200 bg-white px-3 py-2 text-brand-600 shadow-sm transition focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-200" />
+            </label>
+            <button id="last-30" class="mt-1 inline-flex items-center justify-center gap-2 rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-xs font-medium text-brand-500 transition hover:border-brand-300 hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-300">
+              <svg data-lucide="history" class="h-3.5 w-3.5"></svg>
+              Últimos 30 días
+            </button>
+          </div>
+        </div>
+      </div>
+      <button id="reset-filters" class="mt-auto hidden w-full rounded-xl border border-brand-200 px-4 py-2 text-sm font-semibold text-brand-500 transition hover:border-brand-300 hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-300">Limpiar filtros</button>
+      <div id="missing-columns" class="hidden rounded-2xl border border-rose-200 bg-rose-50/80 p-4 text-sm text-rose-700"></div>
+    </aside>
+
+    <!-- Contenido principal -->
+    <section class="flex flex-1 flex-col gap-6">
+      <header class="flex flex-col gap-4 rounded-3xl bg-white p-6 shadow-lg ring-1 ring-brand-100">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-brand-400">Resumen</p>
+            <h2 class="mt-1 text-2xl font-semibold tracking-tight text-brand-900">Desempeño de leads filtrados</h2>
+          </div>
+          <div class="flex items-center gap-3 text-sm text-brand-500">
+            <svg data-lucide="info" class="h-4 w-4"></svg>
+            <span id="status-label">Carga un CSV para comenzar.</span>
+          </div>
+        </div>
+        <div class="grid gap-4 sm:grid-cols-3">
+          <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-900 via-brand-500 to-brand-400 p-6 text-white shadow-lg">
+            <div class="flex items-center justify-between text-sm font-medium uppercase tracking-wide text-white/70">
+              <span>Total de leads</span>
+              <svg data-lucide="users" class="h-5 w-5"></svg>
+            </div>
+            <p id="kpi-total" class="counter-transition mt-6 text-3xl font-semibold tabular-nums">0</p>
+            <p class="mt-4 text-xs text-white/70">Según filtros activos</p>
+          </div>
+          <div class="rounded-3xl bg-white p-6 shadow-inner ring-1 ring-brand-100">
+            <div class="flex items-center justify-between text-sm font-medium uppercase tracking-wide text-brand-400">
+              <span>% concretados</span>
+              <svg data-lucide="target" class="h-5 w-5"></svg>
+            </div>
+            <p id="kpi-conversion" class="counter-transition mt-6 text-3xl font-semibold text-brand-900 tabular-nums">0%</p>
+            <p class="mt-4 text-xs text-brand-400">Concretados vs total</p>
+          </div>
+          <div class="rounded-3xl bg-white p-6 shadow-inner ring-1 ring-brand-100">
+            <div class="flex items-center justify-between text-sm font-medium uppercase tracking-wide text-brand-400">
+              <span>Promedio diario</span>
+              <svg data-lucide="calendar" class="h-5 w-5"></svg>
+            </div>
+            <p id="kpi-promedio" class="counter-transition mt-6 text-3xl font-semibold text-brand-900 tabular-nums">0</p>
+            <p class="mt-4 text-xs text-brand-400">Leads por día</p>
+          </div>
+        </div>
+      </header>
+
+      <div class="grid grid-cols-1 gap-6 xl:grid-cols-5">
+        <article class="xl:col-span-3 flex flex-col gap-6 rounded-3xl bg-white p-6 shadow-lg ring-1 ring-brand-100">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-lg font-semibold tracking-tight">Distribución por canal</h3>
+              <p class="text-sm text-brand-400">¿Cómo llegan los leads seleccionados?</p>
+            </div>
+            <span class="rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-400">Donut</span>
+          </div>
+          <div class="relative h-72">
+            <canvas id="chart-canal" aria-label="Gráfico de leads por canal" role="img"></canvas>
+            <div id="empty-canal" class="absolute inset-0 hidden place-items-center text-center text-sm text-brand-400">
+              <div class="space-y-2">
+                <svg data-lucide="pie-chart" class="mx-auto h-8 w-8 text-brand-200"></svg>
+                <p>Sin datos para el gráfico con los filtros actuales.</p>
+              </div>
+            </div>
+          </div>
+        </article>
+        <article class="xl:col-span-2 flex flex-col gap-6 rounded-3xl bg-white p-6 shadow-lg ring-1 ring-brand-100">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-lg font-semibold tracking-tight">Estatus de los leads</h3>
+              <p class="text-sm text-brand-400">Seguimiento global del embudo</p>
+            </div>
+            <span class="rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-400">Barras</span>
+          </div>
+          <div class="relative h-72">
+            <canvas id="chart-estatus" aria-label="Gráfico de estatus" role="img"></canvas>
+            <div id="empty-estatus" class="absolute inset-0 hidden place-items-center text-center text-sm text-brand-400">
+              <div class="space-y-2">
+                <svg data-lucide="bar-chart-3" class="mx-auto h-8 w-8 text-brand-200"></svg>
+                <p>No hay estatus disponibles para mostrar.</p>
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <section class="flex flex-col gap-6 rounded-3xl bg-white p-6 shadow-lg ring-1 ring-brand-100">
+        <header class="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h3 class="text-lg font-semibold tracking-tight">Insights accionables</h3>
+            <p class="text-sm text-brand-400">Interpretación automática según los filtros seleccionados.</p>
+          </div>
+          <div class="flex items-center gap-2 text-xs text-brand-400">
+            <svg data-lucide="sparkles" class="h-4 w-4"></svg>
+            Actualizado al aplicar filtros
+          </div>
+        </header>
+        <ul id="insights" class="grid gap-3 text-sm text-brand-600 sm:grid-cols-2">
+          <li class="rounded-2xl bg-brand-50 p-4 text-brand-400">Carga datos para generar insights.</li>
+        </ul>
+      </section>
+    </section>
+  </main>
+
+  <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    // Plan de trabajo
+    // 1. Detección y normalización de columnas clave (normalizeKey, detectColumn, parseDateFlexible, normalizeStatus).
+    // 2. UI dinámica de filtros (chips multiselección, rango de fechas y atajo Últimos 30 días) con estados vacíos y botón Limpiar.
+    // 3. Cálculo de KPIs con animación (total, % concretados, promedio diario) tras aplicar filtros.
+    // 4. Visualizaciones con Chart.js (donut por canal, barras por estatus) reutilizando instancias y datalabels contrastadas.
+    // 5. Generación de insights automáticos (top canal, tasa de concreción, mejor comercial, fase con más cancelaciones) y manejo de errores.
+
+    const lucideIcons = () => {
+      lucide.createIcons();
+    };
+
+    const normalizeKey = (str = '') =>
+      str
+        .toString()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '');
+
+    const detectColumn = (headers, candidates) => {
+      const normalizedHeaders = headers.map((h) => ({ original: h, normalized: normalizeKey(h) }));
+      for (const option of candidates) {
+        const normalizedOption = normalizeKey(option);
+        const match = normalizedHeaders.find((h) => h.normalized === normalizedOption);
+        if (match) return match.original;
+      }
+      return null;
+    };
+
+    const parseDateFlexible = (value) => {
+      if (!value) return null;
+      const trimmed = value.toString().trim();
+      const parsers = [
+        (val) => new Date(val),
+        (val) => {
+          const [d, m, y] = val.split('/').map((n) => parseInt(n, 10));
+          if (!d || !m || !y) return null;
+          const year = y < 100 ? 2000 + y : y;
+          return new Date(year, m - 1, d);
+        },
+        (val) => {
+          const [m, d, y] = val.split('/').map((n) => parseInt(n, 10));
+          if (!d || !m || !y) return null;
+          const year = y < 100 ? 2000 + y : y;
+          return new Date(year, m - 1, d);
+        },
+      ];
+
+      for (const parse of parsers) {
+        const date = parse(trimmed);
+        if (date instanceof Date && !isNaN(date.getTime())) {
+          return date;
+        }
+      }
+      return null;
+    };
+
+    const normalizeStatus = (value = '') => {
+      const normalized = normalizeKey(value);
+      if (!normalized) return 'Sin respuesta';
+      if (['concretado', 'concretada', 'cerrado', 'ganado'].includes(normalized)) return 'Concretado';
+      if (
+        [
+          'cancelado',
+          'cancelada',
+          'perdido',
+          'perdida',
+          'sin_servicio',
+          'no_se_cuenta_con_el_servicio',
+          'sin_servicio_',
+          'no_se_cuenta_con_el_servicio_',
+        ].includes(normalized)
+      )
+        return 'Cancelado';
+      if (
+        [
+          'sin_respuesta',
+          'sin_respuestas',
+          'no_contesta',
+          'no_contesto',
+          'no_responde',
+          'sin_responder',
+        ].includes(normalized)
+      )
+        return 'Sin respuesta';
+      if (normalized.includes('concret')) return 'Concretado';
+      if (normalized.includes('cancel')) return 'Cancelado';
+      if (normalized.includes('no_contesta') || normalized.includes('sin_respu')) return 'Sin respuesta';
+      return 'Sin respuesta';
+    };
+
+    const formatNumber = (value) =>
+      value.toLocaleString('es-MX', { maximumFractionDigits: 1, minimumFractionDigits: 0 });
+
+    const formatPercent = (value) =>
+      `${value.toLocaleString('es-MX', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
+
+    const statusOrder = ['Concretado', 'Cancelado', 'Sin respuesta'];
+
+    let rawData = [];
+    let filteredData = [];
+    let columns = {};
+    let charts = {
+      canal: null,
+      estatus: null,
+    };
+
+    const elements = {
+      fileInput: document.getElementById('file-input'),
+      dropZone: document.getElementById('drop-zone'),
+      clearData: document.getElementById('clear-data'),
+      missingColumns: document.getElementById('missing-columns'),
+      statusLabel: document.getElementById('status-label'),
+      filters: {
+        canal: document.getElementById('filter-canal'),
+        fase: document.getElementById('filter-fase'),
+        comercial: document.getElementById('filter-comercial'),
+      },
+      filterResetButtons: document.querySelectorAll('[data-reset]'),
+      dateFrom: document.getElementById('date-from'),
+      dateTo: document.getElementById('date-to'),
+      last30: document.getElementById('last-30'),
+      resetFilters: document.getElementById('reset-filters'),
+      kpis: {
+        total: document.getElementById('kpi-total'),
+        conversion: document.getElementById('kpi-conversion'),
+        promedio: document.getElementById('kpi-promedio'),
+      },
+      chartCanal: document.getElementById('chart-canal'),
+      emptyCanal: document.getElementById('empty-canal'),
+      chartEstatus: document.getElementById('chart-estatus'),
+      emptyEstatus: document.getElementById('empty-estatus'),
+      insights: document.getElementById('insights'),
+    };
+
+    const filtersState = {
+      canal: new Set(),
+      fase: new Set(),
+      comercial: new Set(),
+      dateFrom: null,
+      dateTo: null,
+    };
+
+    const resetFilters = () => {
+      filtersState.canal.clear();
+      filtersState.fase.clear();
+      filtersState.comercial.clear();
+      filtersState.dateFrom = null;
+      filtersState.dateTo = null;
+      elements.dateFrom.value = '';
+      elements.dateTo.value = '';
+      document.querySelectorAll('.filter-chip').forEach((chip) => chip.classList.remove('chip-selected'));
+      applyAndRender();
+    };
+
+    const buildFilterChip = (type, value) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = value || 'Sin dato';
+      button.className =
+        'filter-chip rounded-full border border-brand-200 px-3 py-1.5 text-xs font-medium text-brand-500 transition hover:border-brand-300 hover:bg-brand-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-300';
+      button.setAttribute('data-type', type);
+      button.setAttribute('data-value', value || '');
+      button.addEventListener('click', () => {
+        const set = filtersState[type];
+        if (set.has(value)) {
+          set.delete(value);
+          button.classList.remove('chip-selected');
+        } else {
+          set.add(value);
+          button.classList.add('chip-selected');
+        }
+        applyAndRender();
+      });
+      return button;
+    };
+
+    const buildFilterOptions = (data) => {
+      const options = {
+        canal: new Set(),
+        fase: new Set(),
+        comercial: new Set(),
+      };
+      data.forEach((row) => {
+        if (row.canal) options.canal.add(row.canal);
+        if (row.fase) options.fase.add(row.fase);
+        if (row.comercial) options.comercial.add(row.comercial);
+      });
+
+      Object.entries(options).forEach(([type, values]) => {
+        const container = elements.filters[type];
+        container.innerHTML = '';
+        if (!values.size) {
+          container.innerHTML = '<p class="text-xs text-brand-300">Sin opciones.</p>';
+          return;
+        }
+        Array.from(values)
+          .sort((a, b) => a.localeCompare(b, 'es'))
+          .forEach((value) => {
+            const chip = buildFilterChip(type, value);
+            container.appendChild(chip);
+          });
+      });
+
+      elements.resetFilters.classList.toggle('hidden', !data.length);
+    };
+
+    const applyFilters = (data, customFilters = null) => {
+      const state = customFilters || filtersState;
+      return data.filter((row) => {
+        if (state.canal.size && !state.canal.has(row.canal)) return false;
+        if (state.fase.size && !state.fase.has(row.fase)) return false;
+        if (state.comercial.size && !state.comercial.has(row.comercial)) return false;
+        if (state.dateFrom && row.fecha && row.fecha < state.dateFrom) return false;
+        if (state.dateTo && row.fecha && row.fecha > state.dateTo) return false;
+        return true;
+      });
+    };
+
+    const animateValue = (element, formatter, start, end, suffix = '') => {
+      const duration = 500;
+      const startTime = performance.now();
+      const step = (now) => {
+        const progress = Math.min((now - startTime) / duration, 1);
+        const value = start + (end - start) * progress;
+        element.textContent = formatter(value) + suffix;
+        if (progress < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    };
+
+    const updateKpis = (data) => {
+      const total = data.length;
+      const concretados = data.filter((row) => row.estatus === 'Concretado').length;
+      const conversion = total ? (concretados / total) * 100 : 0;
+
+      let promedio = 0;
+      if (total) {
+        const fechasValidas = data.map((row) => row.fecha).filter(Boolean).sort((a, b) => a - b);
+        if (fechasValidas.length) {
+          const min = fechasValidas[0];
+          const max = fechasValidas[fechasValidas.length - 1];
+          const days = Math.max(1, Math.round((max - min) / (1000 * 60 * 60 * 24)) + 1);
+          promedio = total / days;
+        }
+      }
+
+      animateValue(elements.kpis.total, (v) => formatNumber(Math.round(v)), parseFloat(elements.kpis.total.dataset.value || '0'), total);
+      elements.kpis.total.dataset.value = total;
+      animateValue(elements.kpis.conversion, (v) => formatPercent(v), parseFloat(elements.kpis.conversion.dataset.value || '0'), conversion);
+      elements.kpis.conversion.dataset.value = conversion;
+      animateValue(elements.kpis.promedio, (v) => formatNumber(v), parseFloat(elements.kpis.promedio.dataset.value || '0'), promedio);
+      elements.kpis.promedio.dataset.value = promedio;
+    };
+
+    const destroyChart = (key) => {
+      if (charts[key]) {
+        charts[key].destroy();
+        charts[key] = null;
+      }
+    };
+
+    const palette = ['#0f172a', '#2563eb', '#7c3aed', '#16a34a', '#f59e0b', '#db2777', '#0891b2', '#f97316'];
+
+    const updatePieByChannel = (data) => {
+      destroyChart('canal');
+      const counts = {};
+      data.forEach((row) => {
+        const key = row.canal || 'Sin canal';
+        counts[key] = (counts[key] || 0) + 1;
+      });
+      const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+      if (!entries.length || !data.length) {
+        elements.emptyCanal.classList.remove('hidden');
+        return;
+      }
+      elements.emptyCanal.classList.add('hidden');
+      const labels = entries.map(([label]) => label);
+      const values = entries.map(([, value]) => value);
+      charts.canal = new Chart(elements.chartCanal, {
+        type: 'doughnut',
+        data: {
+          labels,
+          datasets: [
+            {
+              data: values,
+              backgroundColor: labels.map((_, i) => palette[i % palette.length]),
+              borderColor: '#ffffff',
+              borderWidth: 2,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {
+              position: 'right',
+              labels: {
+                color: '#57534e',
+                usePointStyle: true,
+              },
+            },
+            tooltip: {
+              backgroundColor: '#111827',
+              titleColor: '#f9fafb',
+              bodyColor: '#e5e7eb',
+              callbacks: {
+                label: (ctx) => ` ${ctx.label}: ${formatNumber(ctx.raw)} (${formatPercent((ctx.raw / data.length) * 100)})`,
+              },
+            },
+            datalabels: {
+              color: '#fff',
+              font: {
+                weight: '600',
+              },
+              formatter: (value, ctx) => {
+                const percentage = (value / data.length) * 100;
+                return `${value} • ${percentage.toFixed(1)}%`;
+              },
+            },
+          },
+          layout: {
+            padding: 16,
+          },
+        },
+        plugins: [ChartDataLabels],
+      });
+    };
+
+    const updateStatusBars = (data) => {
+      destroyChart('estatus');
+      const counts = statusOrder.map((status) => ({ status, value: 0 }));
+      data.forEach((row) => {
+        const idx = statusOrder.indexOf(row.estatus);
+        if (idx >= 0) counts[idx].value += 1;
+      });
+      const values = counts.map((item) => item.value);
+      if (!data.length || values.every((v) => v === 0)) {
+        elements.emptyEstatus.classList.remove('hidden');
+        return;
+      }
+      elements.emptyEstatus.classList.add('hidden');
+      charts.estatus = new Chart(elements.chartEstatus, {
+        type: 'bar',
+        data: {
+          labels: counts.map((item) => item.status),
+          datasets: [
+            {
+              data: values,
+              backgroundColor: ['#16a34a', '#dc2626', '#1d4ed8'],
+              borderRadius: 12,
+              maxBarThickness: 60,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              ticks: {
+                color: '#57534e',
+                font: { weight: '600' },
+              },
+              grid: {
+                display: false,
+              },
+            },
+            y: {
+              beginAtZero: true,
+              ticks: {
+                color: '#78716c',
+              },
+              grid: {
+                color: 'rgba(120, 113, 108, 0.1)',
+              },
+            },
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#111827',
+              titleColor: '#f9fafb',
+              bodyColor: '#e5e7eb',
+              callbacks: {
+                label: (ctx) => ` ${ctx.label}: ${formatNumber(ctx.raw)}`,
+              },
+            },
+            datalabels: {
+              anchor: 'end',
+              align: 'top',
+              color: '#57534e',
+              font: { weight: '600' },
+            },
+          },
+        },
+        plugins: [ChartDataLabels],
+      });
+    };
+
+    const renderInsights = (data) => {
+      const container = elements.insights;
+      container.innerHTML = '';
+      if (!data.length) {
+        container.innerHTML = '<li class="rounded-2xl bg-brand-50 p-4 text-brand-400">No hay datos para generar insights.</li>';
+        return;
+      }
+
+      const total = data.length;
+      const countsByChannel = {};
+      const countsByComercial = {};
+      const concretadosByComercial = {};
+      const countsByFase = {};
+      const canceladosByFase = {};
+      let concretados = 0;
+
+      data.forEach((row) => {
+        const canal = row.canal || 'Sin canal';
+        countsByChannel[canal] = (countsByChannel[canal] || 0) + 1;
+        const comercial = row.comercial || 'Sin comercial';
+        countsByComercial[comercial] = (countsByComercial[comercial] || 0) + 1;
+        const fase = row.fase || 'Sin fase';
+        countsByFase[fase] = (countsByFase[fase] || 0) + 1;
+        if (row.estatus === 'Concretado') {
+          concretados += 1;
+          concretadosByComercial[comercial] = (concretadosByComercial[comercial] || 0) + 1;
+        }
+        if (row.estatus === 'Cancelado') {
+          canceladosByFase[fase] = (canceladosByFase[fase] || 0) + 1;
+        }
+      });
+
+      const insights = [];
+
+      // Insight 1: top canal
+      const topCanal = Object.entries(countsByChannel).sort((a, b) => b[1] - a[1])[0];
+      if (topCanal) {
+        const [canal, count] = topCanal;
+        insights.push(
+          `🏆 El canal <strong>${canal}</strong> concentra el ${formatPercent((count / total) * 100)} de los leads filtrados.`
+        );
+      }
+
+      // Insight 2: tasa de concretados y comparación
+      const conversion = total ? (concretados / total) * 100 : 0;
+      let comparativo = '';
+      if (filtersState.dateFrom && filtersState.dateTo) {
+        const rangoDias = Math.ceil((filtersState.dateTo - filtersState.dateFrom) / (1000 * 60 * 60 * 24)) + 1;
+        if (rangoDias > 1) {
+          const periodoAnteriorInicio = new Date(filtersState.dateFrom);
+          periodoAnteriorInicio.setDate(periodoAnteriorInicio.getDate() - rangoDias);
+          const periodoAnteriorFin = new Date(filtersState.dateFrom);
+          periodoAnteriorFin.setDate(periodoAnteriorFin.getDate() - 1);
+          const customFilters = {
+            canal: new Set(filtersState.canal),
+            fase: new Set(filtersState.fase),
+            comercial: new Set(filtersState.comercial),
+            dateFrom: periodoAnteriorInicio,
+            dateTo: periodoAnteriorFin,
+          };
+          const dataAnterior = applyFilters(rawData, customFilters);
+          const concretadosAnterior = dataAnterior.filter((row) => row.estatus === 'Concretado').length;
+          const conversionAnterior = dataAnterior.length ? (concretadosAnterior / dataAnterior.length) * 100 : 0;
+          if (dataAnterior.length) {
+            const diferencia = conversion - conversionAnterior;
+            const simbolo = diferencia >= 0 ? '▲' : '▼';
+            comparativo = ` (${simbolo} ${formatPercent(Math.abs(diferencia))} vs. periodo anterior)`;
+          }
+        }
+      }
+      insights.push(`📈 La tasa de concreción es de ${formatPercent(conversion)}${comparativo}.`);
+
+      // Insight 3: mejor comercial
+      const mejorComercial = Object.entries(concretadosByComercial).sort((a, b) => b[1] - a[1])[0];
+      if (mejorComercial) {
+        const [comercial, concreciones] = mejorComercial;
+        const totalComercial = countsByComercial[comercial] || concreciones;
+        const conversionComercial = totalComercial ? (concreciones / totalComercial) * 100 : 0;
+        insights.push(
+          `🧑‍💼 ${comercial} lidera con ${formatNumber(concreciones)} concreciones y una conversión aproximada de ${formatPercent(
+            conversionComercial
+          )}.`
+        );
+      }
+
+      // Insight 4: fase con más cancelaciones
+      const faseCancelaciones = Object.entries(canceladosByFase).sort((a, b) => b[1] - a[1])[0];
+      if (faseCancelaciones) {
+        const [fase, cancelaciones] = faseCancelaciones;
+        insights.push(
+          `⚠️ La fase <strong>${fase}</strong> concentra ${formatNumber(cancelaciones)} cancelaciones; revisa los motivos asociados.`
+        );
+      }
+
+      container.innerHTML = insights
+        .map((text) => `<li class="rounded-2xl bg-brand-50 p-4 leading-relaxed">${text}</li>`)
+        .join('');
+    };
+
+    const applyAndRender = () => {
+      if (!rawData.length) {
+        filteredData = [];
+        updateKpis([]);
+        destroyChart('canal');
+        destroyChart('estatus');
+        elements.emptyCanal.classList.add('hidden');
+        elements.emptyEstatus.classList.add('hidden');
+        renderInsights([]);
+        return;
+      }
+      filteredData = applyFilters(rawData);
+      updateKpis(filteredData);
+      updatePieByChannel(filteredData);
+      updateStatusBars(filteredData);
+      renderInsights(filteredData);
+      elements.statusLabel.textContent = `${formatNumber(filteredData.length)} leads después de filtros.`;
+    };
+
+    const processParsedData = (results) => {
+      const { data, meta } = results;
+      const headers = (meta && meta.fields) || [];
+      if (!headers.length) {
+        elements.statusLabel.textContent = 'No se detectaron encabezados válidos en el CSV.';
+        return;
+      }
+
+      columns = {
+        canal: detectColumn(headers, ['canal', 'canal_de_adquisicion', 'como_supo_de_nosotros', 'source', 'origen']),
+        fase: detectColumn(headers, ['fase', 'stage', 'etapa']),
+        comercial: detectColumn(headers, ['comercial', 'vendedor', 'owner', 'ejecutivo']),
+        fecha: detectColumn(headers, ['fecha', 'created_at', 'fecha_creacion', 'date']),
+        estatus: detectColumn(headers, ['estatus', 'status', 'estado']),
+      };
+
+      const missing = Object.entries(columns)
+        .filter(([, value]) => !value)
+        .map(([key]) => key);
+
+      if (missing.length) {
+        elements.missingColumns.classList.remove('hidden');
+        elements.missingColumns.innerHTML = `Faltan columnas requeridas: <strong>${missing.join(
+          ', '
+        )}</strong>. Encabezados detectados: <span class="font-mono text-xs">${headers.join(', ')}</span>.`;
+        elements.statusLabel.textContent = 'No se puede procesar el CSV hasta completar columnas.';
+        return;
+      }
+
+      elements.missingColumns.classList.add('hidden');
+
+      rawData = data
+        .filter((row) => Object.values(row).some((value) => value && value.toString().trim() !== ''))
+        .map((row) => {
+          const canal = row[columns.canal] ? row[columns.canal].toString().trim() : '';
+          const fase = row[columns.fase] ? row[columns.fase].toString().trim() : '';
+          const comercial = row[columns.comercial] ? row[columns.comercial].toString().trim() : '';
+          const fecha = parseDateFlexible(row[columns.fecha]);
+          const estatus = normalizeStatus(row[columns.estatus]);
+          return { canal, fase, comercial, fecha, estatus };
+        });
+
+      if (!rawData.length) {
+        elements.statusLabel.textContent = 'No se encontraron filas con datos válidos.';
+        return;
+      }
+
+      elements.statusLabel.textContent = `${formatNumber(rawData.length)} registros cargados.`;
+      buildFilterOptions(rawData);
+      filtersState.canal.clear();
+      filtersState.fase.clear();
+      filtersState.comercial.clear();
+      filtersState.dateFrom = null;
+      filtersState.dateTo = null;
+      elements.dateFrom.value = '';
+      elements.dateTo.value = '';
+      elements.clearData.classList.remove('hidden');
+      document.querySelectorAll('.filter-chip').forEach((chip) => chip.classList.remove('chip-selected'));
+      applyAndRender();
+    };
+
+    const parseCsv = (file) => {
+      elements.statusLabel.textContent = 'Procesando archivo...';
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        encoding: 'UTF-8',
+        complete: (results) => {
+          if (results.errors && results.errors.length) {
+            console.warn('Errores de parseo', results.errors);
+          }
+          processParsedData(results);
+        },
+        error: (error) => {
+          console.error('Error al leer CSV', error);
+          elements.statusLabel.textContent = 'Error al leer el CSV. Revisa la consola para más detalles.';
+        },
+      });
+    };
+
+    const setupDragAndDrop = () => {
+      elements.dropZone.addEventListener('click', () => elements.fileInput.click());
+      elements.dropZone.addEventListener('dragover', (event) => {
+        event.preventDefault();
+        elements.dropZone.classList.add('ring-2', 'ring-brand-400');
+      });
+      elements.dropZone.addEventListener('dragleave', () => {
+        elements.dropZone.classList.remove('ring-2', 'ring-brand-400');
+      });
+      elements.dropZone.addEventListener('drop', (event) => {
+        event.preventDefault();
+        elements.dropZone.classList.remove('ring-2', 'ring-brand-400');
+        const file = event.dataTransfer.files[0];
+        if (file) {
+          elements.fileInput.files = event.dataTransfer.files;
+          parseCsv(file);
+        }
+      });
+    };
+
+    const initEvents = () => {
+      elements.fileInput.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (file) parseCsv(file);
+      });
+
+      elements.clearData.addEventListener('click', () => {
+        rawData = [];
+        filteredData = [];
+        columns = {};
+        elements.statusLabel.textContent = 'Carga un CSV para comenzar.';
+        elements.clearData.classList.add('hidden');
+        Object.values(elements.filters).forEach((container) => (container.innerHTML = ''));
+        elements.resetFilters.classList.add('hidden');
+        elements.insights.innerHTML = '<li class="rounded-2xl bg-brand-50 p-4 text-brand-400">Carga datos para generar insights.</li>';
+        updateKpis([]);
+        destroyChart('canal');
+        destroyChart('estatus');
+        elements.emptyCanal.classList.add('hidden');
+        elements.emptyEstatus.classList.add('hidden');
+      });
+
+      elements.filterResetButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+          const type = button.dataset.reset;
+          filtersState[type].clear();
+          document
+            .querySelectorAll(`.filter-chip[data-type="${type}"]`)
+            .forEach((chip) => chip.classList.remove('chip-selected'));
+          applyAndRender();
+        });
+      });
+
+      elements.dateFrom.addEventListener('change', (event) => {
+        filtersState.dateFrom = event.target.value ? new Date(event.target.value) : null;
+        applyAndRender();
+      });
+
+      elements.dateTo.addEventListener('change', (event) => {
+        filtersState.dateTo = event.target.value ? new Date(event.target.value) : null;
+        applyAndRender();
+      });
+
+      elements.last30.addEventListener('click', () => {
+        const today = new Date();
+        const start = new Date();
+        start.setDate(today.getDate() - 29);
+        filtersState.dateFrom = start;
+        filtersState.dateTo = today;
+        elements.dateFrom.valueAsDate = start;
+        elements.dateTo.valueAsDate = today;
+        applyAndRender();
+      });
+
+      elements.resetFilters.addEventListener('click', resetFilters);
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      lucideIcons();
+      setupDragAndDrop();
+      initEvents();
+      updateKpis([]);
+    });
+  </script>
+  <!--
+  <script type="text/csv" id="csv-ejemplo">
+Fecha,Nombre,Telefono,Como supo de nosotros,Fase,Fecha Fase,Estatus,Comercial
+11/09/2025,Andrea Canales,5513337591,Referidos,Cotizado,11/09/2025,Cancelado,Alejandra Vargas
+14/09/2025,Marcos Ushdi,5585803596,Referidos,Concretado,14/09/2025,Concretado,Alejandra Vargas
+22/09/2025,Leobardo Brizuela,5532232902,Hosp Español,Concretado,22/09/2025,Concretado,Ariel Morones
+27/09/2025,Ricardo Franco,5554389315,Google,Cotizado,27/09/2025,Cancelado,Ariel Morones
+20/10/2025,Uriel Corona,5543419803,Referidos,Concretado,27/10/2025,Concretado,Alejandra Vargas
+  </script>
+  -->
+</body>
+</html>

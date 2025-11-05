@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Panel CRM Interactivo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'ui-sans-serif', 'system-ui']
+          },
+          colors: {
+            brand: {
+              50: '#f2f2f1',
+              100: '#dcd9d7',
+              200: '#c6c1bd',
+              300: '#b0a8a3',
+              400: '#9a9089',
+              500: '#85786f',
+              600: '#6b5f56',
+              700: '#52463d',
+              800: '#392f26',
+              900: '#20170f'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+</head>
+<body class="min-h-full bg-stone-100 text-stone-900 antialiased">
+  <div class="min-h-screen flex flex-col">
+    <header class="border-b border-stone-200 bg-white/70 backdrop-blur">
+      <div class="mx-auto w-full max-w-7xl px-6 py-6 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <p class="text-sm uppercase tracking-wide text-stone-500">Panel de gestión comercial</p>
+          <h1 class="text-3xl font-semibold tracking-tight">Explora tus leads con filtros inteligentes</h1>
+          <p class="mt-2 max-w-xl text-sm text-stone-600">Carga un archivo CSV y descubre tendencias por canal, desempeño de comerciales y oportunidades de mejora. Los datos se actualizan en vivo al ajustar los filtros.</p>
+        </div>
+        <div>
+          <label class="group relative block rounded-3xl border border-dashed border-stone-300 bg-stone-50 p-5 text-center transition hover:border-emerald-400 hover:bg-emerald-50/50 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-400/40" aria-label="Cargar archivo CSV">
+            <input type="file" accept=".csv" id="csvInput" class="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
+            <div class="flex flex-col items-center gap-3">
+              <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600">
+                <i data-lucide="upload" class="h-6 w-6"></i>
+              </div>
+              <div>
+                <p class="text-sm font-medium">Sube tu CSV</p>
+                <p class="text-xs text-stone-500">o arrástralo a esta área</p>
+              </div>
+            </div>
+          </label>
+          <p id="fileInfo" class="mt-2 text-xs text-stone-500">Esperando archivo...</p>
+        </div>
+      </div>
+    </header>
+
+    <main class="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-6 py-8 lg:flex-row">
+      <aside class="lg:w-80">
+        <div class="sticky top-6 flex flex-col gap-6">
+          <section class="rounded-3xl bg-white p-6 shadow-[0_10px_25px_rgba(28,25,23,0.05)] ring-1 ring-stone-200">
+            <header class="flex items-center justify-between">
+              <div>
+                <h2 class="text-lg font-semibold tracking-tight">Filtros</h2>
+                <p class="text-xs text-stone-500">Ajusta la vista según tus necesidades</p>
+              </div>
+              <button id="clearFilters" class="inline-flex items-center gap-1 rounded-full border border-stone-200 px-3 py-1 text-xs font-medium text-stone-600 transition hover:border-emerald-300 hover:text-emerald-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500">Limpiar</button>
+            </header>
+
+            <div class="mt-6 space-y-6">
+              <div>
+                <h3 class="text-sm font-medium text-stone-600">Canal</h3>
+                <div id="filterCanal" class="mt-3 flex flex-wrap gap-2"></div>
+              </div>
+              <div>
+                <h3 class="text-sm font-medium text-stone-600">Fase</h3>
+                <div id="filterFase" class="mt-3 flex flex-wrap gap-2"></div>
+              </div>
+              <div>
+                <h3 class="text-sm font-medium text-stone-600">Comercial</h3>
+                <div id="filterComercial" class="mt-3 flex flex-wrap gap-2"></div>
+              </div>
+              <div>
+                <h3 class="text-sm font-medium text-stone-600">Rango de fechas</h3>
+                <div class="mt-3 grid grid-cols-2 gap-2 text-sm">
+                  <label class="col-span-2 flex items-center gap-2 text-xs font-medium text-stone-500">
+                    <i data-lucide="calendar" class="h-4 w-4"></i>
+                    Selecciona un rango
+                  </label>
+                  <input type="date" id="dateStart" class="rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2 text-xs shadow-inner transition focus:border-emerald-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-300/50" aria-label="Fecha inicial" />
+                  <input type="date" id="dateEnd" class="rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2 text-xs shadow-inner transition focus:border-emerald-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-300/50" aria-label="Fecha final" />
+                  <button id="last30" class="col-span-2 inline-flex items-center justify-center gap-2 rounded-2xl bg-stone-900 px-3 py-2 text-xs font-medium text-white transition hover:bg-stone-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-900">
+                    <i data-lucide="clock" class="h-4 w-4"></i>
+                    Últimos 30 días
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section id="alertPanel" class="hidden rounded-3xl border border-rose-200 bg-rose-50/80 p-6 text-sm text-rose-700 shadow-[0_12px_30px_rgba(225,29,72,0.12)]">
+            <div class="flex items-start gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-rose-100 text-rose-600">
+                <i data-lucide="alert-triangle" class="h-5 w-5"></i>
+              </div>
+              <div>
+                <h3 class="font-semibold">Columnas faltantes</h3>
+                <p id="alertMessage" class="mt-1 text-xs leading-relaxed"></p>
+              </div>
+            </div>
+          </section>
+        </div>
+      </aside>
+
+      <section class="flex-1 space-y-6">
+        <section class="grid gap-4 md:grid-cols-3" aria-label="Indicadores clave">
+          <article class="rounded-3xl bg-white p-6 shadow-[0_18px_35px_rgba(15,23,42,0.08)] ring-1 ring-stone-200">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-xs font-medium uppercase tracking-wide text-stone-500">Total de leads</p>
+                <p id="kpiTotal" class="mt-2 text-3xl font-semibold tracking-tight">0</p>
+              </div>
+              <span class="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600">
+                <i data-lucide="users" class="h-5 w-5"></i>
+              </span>
+            </div>
+            <p class="mt-3 text-xs text-stone-500">Cantidad de registros después de aplicar filtros</p>
+          </article>
+          <article class="rounded-3xl bg-white p-6 shadow-[0_18px_35px_rgba(15,23,42,0.08)] ring-1 ring-stone-200">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-xs font-medium uppercase tracking-wide text-stone-500">% concretados</p>
+                <p id="kpiConversion" class="mt-2 text-3xl font-semibold tracking-tight">0%</p>
+              </div>
+              <span class="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600">
+                <i data-lucide="trending-up" class="h-5 w-5"></i>
+              </span>
+            </div>
+            <p class="mt-3 text-xs text-stone-500">Proporción de concretados sobre el total filtrado</p>
+          </article>
+          <article class="rounded-3xl bg-white p-6 shadow-[0_18px_35px_rgba(15,23,42,0.08)] ring-1 ring-stone-200">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-xs font-medium uppercase tracking-wide text-stone-500">Leads por día</p>
+                <p id="kpiDaily" class="mt-2 text-3xl font-semibold tracking-tight">0</p>
+              </div>
+              <span class="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-100 text-amber-600">
+                <i data-lucide="calendar-clock" class="h-5 w-5"></i>
+              </span>
+            </div>
+            <p class="mt-3 text-xs text-stone-500">Promedio diario dentro del rango seleccionado</p>
+          </article>
+        </section>
+
+        <section class="grid gap-6 lg:grid-cols-2">
+          <article class="flex flex-col rounded-3xl bg-white p-6 shadow-[0_18px_35px_rgba(15,23,42,0.08)] ring-1 ring-stone-200" aria-labelledby="canalChartTitle">
+            <header class="flex items-start justify-between">
+              <div>
+                <h2 id="canalChartTitle" class="text-lg font-semibold tracking-tight">Leads por canal</h2>
+                <p class="text-xs text-stone-500">Distribución de adquisición</p>
+              </div>
+              <span class="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+                <span class="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-500"></span>
+                Actualizado
+              </span>
+            </header>
+            <div class="mt-6 flex-1">
+              <canvas id="chartCanal" class="h-72 w-full"></canvas>
+              <p id="emptyCanal" class="mt-4 hidden rounded-2xl bg-stone-50 p-4 text-center text-sm text-stone-500">No hay datos para mostrar en este gráfico.</p>
+            </div>
+          </article>
+
+          <article class="flex flex-col rounded-3xl bg-white p-6 shadow-[0_18px_35px_rgba(15,23,42,0.08)] ring-1 ring-stone-200" aria-labelledby="statusChartTitle">
+            <header class="flex items-start justify-between">
+              <div>
+                <h2 id="statusChartTitle" class="text-lg font-semibold tracking-tight">Estatus de los leads</h2>
+                <p class="text-xs text-stone-500">Concretado, Cancelado y Sin respuesta</p>
+              </div>
+            </header>
+            <div class="mt-6 flex-1">
+              <canvas id="chartStatus" class="h-72 w-full"></canvas>
+              <p id="emptyStatus" class="mt-4 hidden rounded-2xl bg-stone-50 p-4 text-center text-sm text-stone-500">No hay datos para mostrar en este gráfico.</p>
+            </div>
+          </article>
+        </section>
+
+        <section class="rounded-3xl bg-white p-6 shadow-[0_18px_35px_rgba(15,23,42,0.08)] ring-1 ring-stone-200" aria-live="polite">
+          <header class="flex items-center justify-between">
+            <div>
+              <h2 class="text-lg font-semibold tracking-tight">Insights destacados</h2>
+              <p class="text-xs text-stone-500">Hallazgos automáticos sobre el conjunto filtrado</p>
+            </div>
+            <div class="flex items-center gap-2 text-xs text-stone-400">
+              <span class="inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
+              <span>Se actualiza al cambiar filtros</span>
+            </div>
+          </header>
+          <ul id="insightList" class="mt-5 space-y-3 text-sm text-stone-700"></ul>
+          <p id="emptyInsights" class="mt-4 hidden rounded-2xl bg-stone-50 p-4 text-center text-sm text-stone-500">Sube un CSV para obtener insights.</p>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const state = {
+      rawData: [],
+      mappedData: [],
+      filters: {
+        canal: new Set(),
+        fase: new Set(),
+        comercial: new Set(),
+        dateStart: null,
+        dateEnd: null
+      },
+      columns: {}
+    };
+
+    const columnCandidates = {
+      canal: ['canal', 'canal_de_adquisicion', 'como_supo_de_nosotros', 'source', 'origen'],
+      fase: ['fase', 'stage', 'etapa'],
+      comercial: ['comercial', 'vendedor', 'owner', 'ejecutivo'],
+      fecha: ['fecha', 'created_at', 'fecha_creacion', 'date'],
+      estatus: ['estatus', 'status', 'estado'],
+      motivo: ['motivo_por_que_no_se_concreto', 'motivo', 'motivo_cancelacion']
+    };
+
+    const statusDictionary = {
+      concretado: 'Concretado',
+      concretados: 'Concretado',
+      ganado: 'Concretado',
+      won: 'Concretado',
+      cerrado: 'Concretado',
+      cancelado: 'Cancelado',
+      cancelada: 'Cancelado',
+      cancelados: 'Cancelado',
+      perdido: 'Cancelado',
+      lost: 'Cancelado',
+      rechazado: 'Cancelado',
+      fuera_de_presupuesto: 'Cancelado',
+      no_se_cuenta_con_el_servicio: 'Cancelado',
+      no_tenemos_el_personal: 'Cancelado',
+      fuera_de_cdmx: 'Cancelado',
+      'sin respuesta': 'Sin respuesta',
+      sin_respuesta: 'Sin respuesta',
+      'no responde': 'Sin respuesta',
+      'no contesta': 'Sin respuesta',
+      pendiente: 'Sin respuesta',
+      abierto: 'Sin respuesta'
+    };
+
+    let canalChart = null;
+    let statusChart = null;
+
+    function normalizeKey(str = '') {
+      return str
+        .toString()
+        .normalize('NFD')
+        .replace(/\p{Diacritic}/gu, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9_]/g, '_')
+        .replace(/_+/g, '_')
+        .replace(/^_|_$/g, '');
+    }
+
+    function detectColumn(headers, candidates) {
+      const normalizedHeaders = headers.map((h) => normalizeKey(h));
+      for (const candidate of candidates) {
+        const norm = normalizeKey(candidate);
+        const idx = normalizedHeaders.indexOf(norm);
+        if (idx !== -1) {
+          return headers[idx];
+        }
+      }
+      return null;
+    }
+
+    function parseDateFlexible(value) {
+      if (!value) return null;
+      const trimmed = value.trim();
+      const iso = /^\d{4}-\d{2}-\d{2}$/;
+      if (iso.test(trimmed)) {
+        const date = new Date(trimmed);
+        return isNaN(date) ? null : date;
+      }
+
+      const slashMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+      if (slashMatch) {
+        const [, part1, part2, part3] = slashMatch;
+        const first = parseInt(part1, 10);
+        const second = parseInt(part2, 10);
+        const rawYear = parseInt(part3, 10);
+        const year = part3.length === 2 ? (rawYear >= 50 ? 1900 + rawYear : 2000 + rawYear) : rawYear;
+
+        const tryDate = (day, month) => {
+          if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+          const date = new Date(year, month - 1, day);
+          return date.getMonth() === month - 1 && date.getDate() === day ? date : null;
+        };
+
+        return (
+          tryDate(first, second) ||
+          tryDate(second, first)
+        );
+      }
+
+      const dashMatch = trimmed.match(/^(\d{1,2})-(\d{1,2})-(\d{2,4})$/);
+      if (dashMatch) {
+        const [, part1, part2, part3] = dashMatch;
+        const first = parseInt(part1, 10);
+        const second = parseInt(part2, 10);
+        const rawYear = parseInt(part3, 10);
+        const year = part3.length === 2 ? (rawYear >= 50 ? 1900 + rawYear : 2000 + rawYear) : rawYear;
+
+        const tryDate = (month, day) => {
+          if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+          const date = new Date(year, month - 1, day);
+          return date.getMonth() === month - 1 && date.getDate() === day ? date : null;
+        };
+
+        return tryDate(first, second) || tryDate(second, first);
+      }
+
+      const alt = new Date(trimmed);
+      return isNaN(alt) ? null : alt;
+    }
+
+    function normalizeStatus(value = '') {
+      const key = normalizeKey(value).replace(/_/g, ' ');
+      return statusDictionary[key] || 'Sin respuesta';
+    }
+
+    function deriveStatusFromRow(row, columns) {
+      const faseRaw = columns.fase ? row[columns.fase] : '';
+      const motivoRaw = columns.motivo ? row[columns.motivo] : '';
+      const faseKey = normalizeKey(faseRaw || '');
+      const motivoKey = normalizeKey(motivoRaw || '');
+
+      if (faseKey.includes('concret') || motivoKey.includes('concret')) {
+        return 'Concretado';
+      }
+
+      const cancelKeywords = [
+        'cancel',
+        'fuera_de_presupuesto',
+        'fuera_de_cdmx',
+        'no_se_cuenta',
+        'no_tenemos_el_personal',
+        'no_se_cuenta_con_el_servicio'
+      ];
+
+      if (cancelKeywords.some((keyword) => faseKey.includes(keyword) || motivoKey.includes(keyword))) {
+        return 'Cancelado';
+      }
+
+      if (faseKey.includes('cotiz') || faseKey.includes('contact')) {
+        return 'Sin respuesta';
+      }
+
+      if (motivoKey.includes('no_responde') || motivoKey.includes('no_contesta') || motivoKey.includes('ya_no_contesto')) {
+        return 'Sin respuesta';
+      }
+
+      return 'Sin respuesta';
+    }
+
+    function cleanText(value, fallback) {
+      if (value === undefined || value === null) return fallback;
+      const trimmed = String(value).trim();
+      return trimmed ? trimmed : fallback;
+    }
+
+    function animateValue(element, targetValue, options = {}) {
+      const { decimals = 0, prefix = '', suffix = '' } = options;
+      const duration = 500;
+      const startValue = Number(element.dataset.currentValue || 0);
+      const startTime = performance.now();
+      function tick(now) {
+        const progress = Math.min((now - startTime) / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const value = startValue + (targetValue - startValue) * eased;
+        const formatted = Number(value).toLocaleString('es-MX', {
+          minimumFractionDigits: decimals,
+          maximumFractionDigits: decimals
+        });
+        element.textContent = `${prefix}${formatted}${suffix}`;
+        element.dataset.currentValue = value.toFixed(decimals);
+        if (progress < 1) requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    }
+
+    function animatePercentage(element, value) {
+      const duration = 600;
+      const start = Number(element.dataset.currentValue || 0);
+      const startTime = performance.now();
+      function tick(now) {
+        const progress = Math.min((now - startTime) / duration, 1);
+        const eased = progress < 0.5 ? 2 * progress * progress : -1 + (4 - 2 * progress) * progress;
+        const current = start + (value - start) * eased;
+        element.textContent = `${current.toFixed(1)}%`;
+        element.dataset.currentValue = current.toFixed(1);
+        if (progress < 1) requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    }
+
+    function buildFilterOptions(data) {
+      const canalContainer = document.getElementById('filterCanal');
+      const faseContainer = document.getElementById('filterFase');
+      const comercialContainer = document.getElementById('filterComercial');
+      canalContainer.innerHTML = '';
+      faseContainer.innerHTML = '';
+      comercialContainer.innerHTML = '';
+
+      const createChip = (label, type) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = label;
+        button.className = 'chip inline-flex items-center gap-2 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-stone-600 transition hover:border-emerald-300 hover:text-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400';
+        button.dataset.value = label;
+        button.dataset.type = type;
+        button.setAttribute('aria-pressed', 'false');
+        button.addEventListener('click', () => toggleChip(button));
+        return button;
+      };
+
+      const canalOptions = Array.from(new Set(data.map((item) => item.canal))).filter(Boolean).sort();
+      const faseOptions = Array.from(new Set(data.map((item) => item.fase))).filter(Boolean).sort();
+      const comercialOptions = Array.from(new Set(data.map((item) => item.comercial))).filter(Boolean).sort();
+
+      canalOptions.forEach((label) => canalContainer.appendChild(createChip(label, 'canal')));
+      faseOptions.forEach((label) => faseContainer.appendChild(createChip(label, 'fase')));
+      comercialOptions.forEach((label) => comercialContainer.appendChild(createChip(label, 'comercial')));
+    }
+
+    function toggleChip(button) {
+      const type = button.dataset.type;
+      const value = button.dataset.value;
+      const isActive = button.classList.toggle('chip-active');
+      button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+      button.classList.toggle('border-emerald-400', isActive);
+      button.classList.toggle('bg-emerald-50', isActive);
+      button.classList.toggle('text-emerald-700', isActive);
+      button.classList.toggle('shadow-[0_4px_12px_rgba(16,185,129,0.18)]', isActive);
+
+      if (isActive) {
+        state.filters[type].add(value);
+      } else {
+        state.filters[type].delete(value);
+      }
+      updateDashboard();
+    }
+
+    function applyFilters(data) {
+      return data.filter((item) => {
+        const { canal, fase, comercial, date } = item;
+        if (state.filters.canal.size && !state.filters.canal.has(canal)) return false;
+        if (state.filters.fase.size && !state.filters.fase.has(fase)) return false;
+        if (state.filters.comercial.size && !state.filters.comercial.has(comercial)) return false;
+        if (state.filters.dateStart && (!date || date < state.filters.dateStart)) return false;
+        if (state.filters.dateEnd && (!date || date > state.filters.dateEnd)) return false;
+        return true;
+      });
+    }
+
+    function updateKpis(filtered) {
+      const totalEl = document.getElementById('kpiTotal');
+      const conversionEl = document.getElementById('kpiConversion');
+      const dailyEl = document.getElementById('kpiDaily');
+
+      const total = filtered.length;
+      const concretados = filtered.filter((item) => item.estatus === 'Concretado').length;
+      const conversion = total > 0 ? (concretados / total) * 100 : 0;
+
+      let dailyAverage = 0;
+      const dates = filtered.map((item) => item.date).filter(Boolean).sort((a, b) => a - b);
+      if (dates.length) {
+        const first = dates[0];
+        const last = dates[dates.length - 1];
+        const diffDays = Math.max(1, Math.round((last - first) / (1000 * 60 * 60 * 24)) + 1);
+        dailyAverage = total / diffDays;
+      }
+
+      animateValue(totalEl, total, { decimals: 0 });
+      animatePercentage(conversionEl, conversion);
+      animateValue(dailyEl, dailyAverage, { decimals: 1 });
+    }
+
+    function updatePieByChannel(filtered) {
+      const container = document.getElementById('chartCanal');
+      const emptyState = document.getElementById('emptyCanal');
+      if (canalChart) {
+        canalChart.destroy();
+        canalChart = null;
+      }
+
+      if (!filtered.length) {
+        emptyState.classList.remove('hidden');
+        return;
+      }
+      emptyState.classList.add('hidden');
+
+      const counts = filtered.reduce((acc, item) => {
+        const key = item.canal || 'Sin canal';
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+      }, {});
+
+      const labels = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+      const data = labels.map((label) => counts[label]);
+      const total = data.reduce((sum, value) => sum + value, 0);
+
+      const palette = ['#059669', '#0ea5e9', '#f97316', '#6366f1', '#f59e0b', '#ec4899', '#14b8a6', '#a855f7'];
+
+      canalChart = new Chart(container, {
+        type: 'doughnut',
+        data: {
+          labels,
+          datasets: [
+            {
+              data,
+              backgroundColor: labels.map((_, index) => palette[index % palette.length]),
+              hoverOffset: 8,
+              borderWidth: 2,
+              borderColor: '#fff'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          cutout: '65%',
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                color: '#44403c',
+                font: { size: 12 }
+              }
+            },
+            tooltip: {
+              backgroundColor: '#1c1917',
+              titleColor: '#f9fafb',
+              bodyColor: '#e7e5e4',
+              callbacks: {
+                label: (ctx) => ` ${ctx.label}: ${ctx.formattedValue}`
+              }
+            },
+            datalabels: {
+              color: '#1c1917',
+              font: {
+                weight: '600'
+              },
+              formatter: (value, ctx) => {
+                const percentage = total ? ((value / total) * 100).toFixed(1) : 0;
+                return `${value}\n${percentage}%`;
+              }
+            }
+          }
+        },
+        plugins: [ChartDataLabels]
+      });
+    }
+
+    function updateStatusBars(filtered) {
+      const container = document.getElementById('chartStatus');
+      const emptyState = document.getElementById('emptyStatus');
+      if (statusChart) {
+        statusChart.destroy();
+        statusChart = null;
+      }
+
+      const categories = ['Concretado', 'Cancelado', 'Sin respuesta'];
+      const counts = categories.map((category) => filtered.filter((item) => item.estatus === category).length);
+
+      if (!filtered.length) {
+        emptyState.classList.remove('hidden');
+        return;
+      }
+      emptyState.classList.add('hidden');
+
+      statusChart = new Chart(container, {
+        type: 'bar',
+        data: {
+          labels: categories,
+          datasets: [
+            {
+              label: 'Leads',
+              data: counts,
+              backgroundColor: ['#059669', '#f97316', '#6366f1'],
+              borderRadius: 18,
+              maxBarThickness: 56
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: {
+                color: '#44403c',
+                font: { weight: '600' }
+              }
+            },
+            y: {
+              grid: { color: 'rgba(120,113,108,0.12)' },
+              beginAtZero: true,
+              ticks: {
+                color: '#57534e',
+                stepSize: 1
+              }
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#1c1917',
+              titleColor: '#f9fafb',
+              bodyColor: '#e7e5e4'
+            },
+            datalabels: {
+              anchor: 'end',
+              align: 'top',
+              color: '#1c1917',
+              font: { weight: '600' }
+            }
+          }
+        },
+        plugins: [ChartDataLabels]
+      });
+    }
+
+    function renderInsights(filtered) {
+      const list = document.getElementById('insightList');
+      const emptyState = document.getElementById('emptyInsights');
+      list.innerHTML = '';
+
+      if (!filtered.length) {
+        emptyState.classList.remove('hidden');
+        return;
+      }
+      emptyState.classList.add('hidden');
+
+      const total = filtered.length;
+      const countsByCanal = filtered.reduce((acc, item) => {
+        const key = item.canal || 'Sin canal';
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+      }, {});
+      const topCanal = Object.entries(countsByCanal).sort((a, b) => b[1] - a[1])[0];
+      const concretados = filtered.filter((item) => item.estatus === 'Concretado');
+      const cancelados = filtered.filter((item) => item.estatus === 'Cancelado');
+      const sinRespuesta = filtered.filter((item) => item.estatus === 'Sin respuesta');
+
+      if (topCanal) {
+        const porcentaje = ((topCanal[1] / total) * 100).toFixed(1);
+        appendInsight(list, `🏆 El canal <span class="font-semibold">${topCanal[0]}</span> aporta el <span class="font-semibold">${porcentaje}%</span> de los leads filtrados.`);
+      }
+
+      const conversionActual = total ? (concretados.length / total) * 100 : 0;
+      const rangeStart = state.filters.dateStart;
+      const rangeEnd = state.filters.dateEnd;
+      let comparativoTexto = '';
+      if (rangeStart && rangeEnd) {
+        const rangeDiff = rangeEnd - rangeStart;
+        const prevStart = new Date(rangeStart.getTime() - rangeDiff - 24 * 60 * 60 * 1000);
+        const prevEnd = new Date(rangeStart.getTime() - 24 * 60 * 60 * 1000);
+        const prevPeriod = state.mappedData.filter((item) => item.date && item.date >= prevStart && item.date <= prevEnd);
+        if (prevPeriod.length) {
+          const prevConversion = (prevPeriod.filter((item) => item.estatus === 'Concretado').length / prevPeriod.length) * 100;
+          const diff = conversionActual - prevConversion;
+          const trend = diff >= 0 ? '↑' : '↓';
+          comparativoTexto = ` (${trend} ${Math.abs(diff).toFixed(1)} pts vs. periodo anterior)`;
+        }
+      }
+      appendInsight(list, `📈 La tasa de concretados es <span class="font-semibold">${conversionActual.toFixed(1)}%</span>${comparativoTexto}.`);
+
+      const comercialStats = concretados.reduce((acc, item) => {
+        if (!item.comercial) return acc;
+        acc[item.comercial] = acc[item.comercial] || { concretados: 0, total: 0 };
+        acc[item.comercial].concretados += 1;
+        return acc;
+      }, {});
+      filtered.forEach((item) => {
+        if (!item.comercial) return;
+        comercialStats[item.comercial] = comercialStats[item.comercial] || { concretados: 0, total: 0 };
+        comercialStats[item.comercial].total += 1;
+      });
+      const topComercial = Object.entries(comercialStats)
+        .filter(([, stats]) => stats.total > 0)
+        .sort((a, b) => b[1].concretados - a[1].concretados)[0];
+      if (topComercial) {
+        const [nombre, stats] = topComercial;
+        const conversion = stats.total ? ((stats.concretados / stats.total) * 100).toFixed(1) : '0.0';
+        appendInsight(list, `🧑‍💼 <span class="font-semibold">${nombre}</span> lidera con <span class="font-semibold">${stats.concretados}</span> cierres y una conversión estimada de <span class="font-semibold">${conversion}%</span>.`);
+      }
+
+      const faseCancelacion = cancelados.reduce((acc, item) => {
+        if (!item.fase) return acc;
+        acc[item.fase] = (acc[item.fase] || 0) + 1;
+        return acc;
+      }, {});
+      if (Object.keys(faseCancelacion).length) {
+        const [faseTop, valor] = Object.entries(faseCancelacion).sort((a, b) => b[1] - a[1])[0];
+        const pct = ((valor / cancelados.length) * 100).toFixed(1);
+        appendInsight(list, `⚠️ La fase <span class="font-semibold">${faseTop}</span> concentra el <span class="font-semibold">${pct}%</span> de los cancelados.`);
+      } else if (sinRespuesta.length) {
+        appendInsight(list, '⚠️ Hay un volumen relevante de leads sin respuesta: considera campañas de seguimiento.');
+      }
+    }
+
+    function appendInsight(list, html) {
+      const item = document.createElement('li');
+      item.className = 'rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm leading-relaxed shadow-[0_8px_20px_rgba(28,25,23,0.04)]';
+      item.innerHTML = html;
+      list.appendChild(item);
+    }
+
+    function updateDashboard() {
+      const filtered = applyFilters(state.mappedData);
+      updateKpis(filtered);
+      updatePieByChannel(filtered);
+      updateStatusBars(filtered);
+      renderInsights(filtered);
+    }
+
+    function resetFilters() {
+      state.filters.canal.clear();
+      state.filters.fase.clear();
+      state.filters.comercial.clear();
+      state.filters.dateStart = null;
+      state.filters.dateEnd = null;
+      document.getElementById('dateStart').value = '';
+      document.getElementById('dateEnd').value = '';
+      document.querySelectorAll('.chip').forEach((chip) => {
+        chip.classList.remove('chip-active', 'border-emerald-400', 'bg-emerald-50', 'text-emerald-700', 'shadow-[0_4px_12px_rgba(16,185,129,0.18)]');
+        chip.setAttribute('aria-pressed', 'false');
+      });
+      updateDashboard();
+    }
+
+    function wireFilterEvents() {
+      document.getElementById('dateStart').addEventListener('change', (event) => {
+        const date = event.target.value ? new Date(event.target.value) : null;
+        state.filters.dateStart = date;
+        updateDashboard();
+      });
+      document.getElementById('dateEnd').addEventListener('change', (event) => {
+        const date = event.target.value ? new Date(event.target.value) : null;
+        if (date) {
+          date.setHours(23, 59, 59, 999);
+        }
+        state.filters.dateEnd = date;
+        updateDashboard();
+      });
+      document.getElementById('last30').addEventListener('click', () => {
+        const now = new Date();
+        const start = new Date(now.getTime() - 29 * 24 * 60 * 60 * 1000);
+        state.filters.dateStart = start;
+        state.filters.dateEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+        document.getElementById('dateStart').value = start.toISOString().substring(0, 10);
+        document.getElementById('dateEnd').value = state.filters.dateEnd.toISOString().substring(0, 10);
+        updateDashboard();
+      });
+      document.getElementById('clearFilters').addEventListener('click', resetFilters);
+    }
+
+    function showAlert(message) {
+      const panel = document.getElementById('alertPanel');
+      const messageEl = document.getElementById('alertMessage');
+      if (!message) {
+        panel.classList.add('hidden');
+        messageEl.textContent = '';
+        return;
+      }
+      messageEl.innerHTML = message;
+      panel.classList.remove('hidden');
+    }
+
+    function processData(results) {
+      const { data, meta } = results;
+      const headers = meta.fields || Object.keys(data[0] || {});
+      if (!headers.length) {
+        showAlert('No se detectaron encabezados en el archivo. Asegúrate de incluir una fila de títulos.');
+        return;
+      }
+      const detected = {};
+      for (const [key, candidates] of Object.entries(columnCandidates)) {
+        detected[key] = detectColumn(headers, candidates);
+      }
+
+      const requiredKeys = ['canal', 'fase', 'comercial', 'fecha'];
+      const missingRequired = requiredKeys.filter((key) => !detected[key]);
+      if (missingRequired.length) {
+        const expected = Object.entries(columnCandidates)
+          .map(([key, values]) => `<strong>${key}</strong>: ${values.join(', ')}`)
+          .join('<br />');
+        const found = headers.join(', ');
+        showAlert(`Faltan columnas obligatorias: <strong>${missingRequired.join(', ')}</strong>.<br />Encabezados esperados: ${expected}.<br />Encabezados detectados: ${found}.`);
+        state.rawData = [];
+        state.mappedData = [];
+        updateDashboard();
+        return;
+      }
+
+      showAlert('');
+
+      state.columns = detected;
+      state.rawData = data;
+      state.mappedData = data
+        .map((row) => {
+          const canal = cleanText(row[detected.canal], 'Sin canal');
+          const fase = cleanText(row[detected.fase], 'Sin fase');
+          const comercial = cleanText(row[detected.comercial], 'Sin asignar');
+          const fechaValor = cleanText(row[detected.fecha], '');
+          const date = parseDateFlexible(fechaValor);
+          const estatus = detected.estatus
+            ? normalizeStatus(cleanText(row[detected.estatus], ''))
+            : deriveStatusFromRow(row, detected);
+          return { canal, fase, comercial, date, estatus };
+        })
+        .filter((item) => {
+          if (!item.date) return true;
+          return !isNaN(item.date.getTime());
+        });
+
+      buildFilterOptions(state.mappedData);
+      resetFilters();
+    }
+
+    function handleFile(file) {
+      if (!file) return;
+      document.getElementById('fileInfo').textContent = `Archivo cargado: ${file.name}`;
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        transformHeader: (header) => header.trim(),
+        complete: processData,
+        error(error) {
+          showAlert(`Error al leer el archivo: ${error.message}`);
+        }
+      });
+    }
+
+    function setupDragAndDrop() {
+      const dropLabel = document.querySelector('label[aria-label="Cargar archivo CSV"]');
+      ['dragenter', 'dragover'].forEach((eventName) => {
+        dropLabel.addEventListener(eventName, (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          dropLabel.classList.add('border-emerald-400', 'bg-emerald-50/80');
+        });
+      });
+      ['dragleave', 'drop'].forEach((eventName) => {
+        dropLabel.addEventListener(eventName, (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          dropLabel.classList.remove('border-emerald-400', 'bg-emerald-50/80');
+        });
+      });
+      dropLabel.addEventListener('drop', (event) => {
+        const file = event.dataTransfer.files[0];
+        handleFile(file);
+      });
+    }
+
+    document.getElementById('csvInput').addEventListener('change', (event) => {
+      const file = event.target.files[0];
+      handleFile(file);
+    });
+
+    wireFilterEvents();
+    setupDragAndDrop();
+
+    lucide.createIcons();
+
+    // Estado inicial
+    updateDashboard();
+  </script>
+
+  <script type="text/csv" id="csvSample">
+"Fecha","Nombre del posible cliente","Como supo de nosotros","Fase","Tipo de servicio","Motivo por que no se concreto","COMERCIAL"
+"11/09/25","Andrea Canales","Referidos","Cotizado","Cuidador","Cancelado","Alejandra Vargas"
+"14/09/25","Marcos Ushdi","Referidos","Concretado","Auxiliar","Concretado","Alejandra Vargas"
+"18/09/25","Alma Rosa","Google","Cotizado","Cuidador","Fuera de Presupuesto","Sofia Platas"
+"30/09/25","Juan Pablo Cabrera","Referidos","Concretado","Auxiliar","Concretado","Alejandra Vargas"
+"05/10/25","Mariana Varela","Hosp Español","Concretado","Auxiliar","Concretado","Sofia Platas"
+  </script>
+</body>
+</html>

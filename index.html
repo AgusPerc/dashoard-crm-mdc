@@ -232,7 +232,7 @@
       comercial: ['comercial', 'vendedor', 'owner', 'ejecutivo'],
       fecha: ['fecha', 'created_at', 'fecha_creacion', 'date'],
       estatus: ['estatus', 'status', 'estado'],
-      motivo: ['motivo_por_que_no_se_concreto', 'motivo', 'motivo_cancelacion']
+      motivo: ['motivo_por_que_no_se_concreto', 'motivo', 'motivo_cancelacion', 'motivo_no_se_concreto']
     };
 
     const statusDictionary = {
@@ -244,17 +244,27 @@
       cancelado: 'Cancelado',
       cancelada: 'Cancelado',
       cancelados: 'Cancelado',
+      cancelacion: 'Cancelado',
       perdido: 'Cancelado',
+      perdidos: 'Cancelado',
       lost: 'Cancelado',
+      rechazo: 'Cancelado',
       rechazado: 'Cancelado',
+      rechazados: 'Cancelado',
       fuera_de_presupuesto: 'Cancelado',
-      no_se_cuenta_con_el_servicio: 'Cancelado',
-      no_tenemos_el_personal: 'Cancelado',
       fuera_de_cdmx: 'Cancelado',
-      'sin respuesta': 'Sin respuesta',
+      no_se_cuenta_con_el_servicio: 'Cancelado',
+      no_se_cuenta_con_servicio: 'Cancelado',
+      no_tenemos_el_personal: 'Cancelado',
       sin_respuesta: 'Sin respuesta',
-      'no responde': 'Sin respuesta',
-      'no contesta': 'Sin respuesta',
+      contacto_pendiente: 'Sin respuesta',
+      contactado: 'Sin respuesta',
+      cotizado: 'Sin respuesta',
+      no_contesta: 'Sin respuesta',
+      no_responde: 'Sin respuesta',
+      ya_no_contesta: 'Sin respuesta',
+      ya_no_contesto: 'Sin respuesta',
+      ya_no_responde: 'Sin respuesta',
       pendiente: 'Sin respuesta',
       abierto: 'Sin respuesta'
     };
@@ -265,10 +275,11 @@
     function normalizeKey(str = '') {
       return str
         .toString()
+        .trim()
         .normalize('NFD')
         .replace(/\p{Diacritic}/gu, '')
         .toLowerCase()
-        .replace(/[^a-z0-9_]/g, '_')
+        .replace(/[^a-z0-9]+/g, '_')
         .replace(/_+/g, '_')
         .replace(/^_|_$/g, '');
     }
@@ -287,7 +298,7 @@
 
     function parseDateFlexible(value) {
       if (!value) return null;
-      const trimmed = value.trim();
+      const trimmed = value.toString().trim();
       const iso = /^\d{4}-\d{2}-\d{2}$/;
       if (iso.test(trimmed)) {
         const date = new Date(trimmed);
@@ -336,7 +347,7 @@
     }
 
     function normalizeStatus(value = '') {
-      const key = normalizeKey(value).replace(/_/g, ' ');
+      const key = normalizeKey(value);
       return statusDictionary[key] || 'Sin respuesta';
     }
 
@@ -356,7 +367,8 @@
         'fuera_de_cdmx',
         'no_se_cuenta',
         'no_tenemos_el_personal',
-        'no_se_cuenta_con_el_servicio'
+        'no_se_cuenta_con_el_servicio',
+        'no_se_cuenta_con_servicio'
       ];
 
       if (cancelKeywords.some((keyword) => faseKey.includes(keyword) || motivoKey.includes(keyword))) {
@@ -374,10 +386,11 @@
       return 'Sin respuesta';
     }
 
-    function cleanText(value, fallback) {
+    function cleanText(value, fallback = '') {
       if (value === undefined || value === null) return fallback;
       const trimmed = String(value).trim();
-      return trimmed ? trimmed : fallback;
+      if (!trimmed) return fallback;
+      return trimmed.replace(/\s+/g, ' ');
     }
 
     function animateValue(element, targetValue, options = {}) {
@@ -820,13 +833,16 @@
       state.rawData = data;
       state.mappedData = data
         .map((row) => {
-          const canal = cleanText(row[detected.canal], 'Sin canal');
-          const fase = cleanText(row[detected.fase], 'Sin fase');
-          const comercial = cleanText(row[detected.comercial], 'Sin asignar');
-          const fechaValor = cleanText(row[detected.fecha], '');
+          const canalValue = cleanText(row[detected.canal]);
+          const faseValue = cleanText(row[detected.fase]);
+          const comercialValue = cleanText(row[detected.comercial]);
+          const canal = canalValue || 'Sin canal';
+          const fase = faseValue || 'Sin fase';
+          const comercial = comercialValue && comercialValue !== '0' ? comercialValue : 'Sin asignar';
+          const fechaValor = cleanText(row[detected.fecha]);
           const date = parseDateFlexible(fechaValor);
           const estatus = detected.estatus
-            ? normalizeStatus(cleanText(row[detected.estatus], ''))
+            ? normalizeStatus(cleanText(row[detected.estatus]))
             : deriveStatusFromRow(row, detected);
           return { canal, fase, comercial, date, estatus };
         })
@@ -909,12 +925,13 @@
   </script>
 
   <script type="text/csv" id="csvSample">
-"Fecha","Nombre del posible cliente","Como supo de nosotros","Fase","Tipo de servicio","Motivo por que no se concreto","COMERCIAL"
-"11/09/25","Andrea Canales","Referidos","Cotizado","Cuidador","Cancelado","Alejandra Vargas"
-"14/09/25","Marcos Ushdi","Referidos","Concretado","Auxiliar","Concretado","Alejandra Vargas"
-"18/09/25","Alma Rosa","Google","Cotizado","Cuidador","Fuera de Presupuesto","Sofia Platas"
-"30/09/25","Juan Pablo Cabrera","Referidos","Concretado","Auxiliar","Concretado","Alejandra Vargas"
-"05/10/25","Mariana Varela","Hosp Español","Concretado","Auxiliar","Concretado","Sofia Platas"
+CRM 2025,,,,,,,,,,
+"Fecha ","Nombre del posible cliente","Número de Telefono ","Como supo de nosotros ","Fase","Fecha Fase","Tipo de servicio","Horas de servicio","Motivo por que no se concreto","COMERCIAL ",,,,
+"11/09/25","Andrea Canales","5513337591","Referidos","Cotizado","11/09/25","Cuidador","8hrs","Cancelado","Alejandra Vargas",,,,
+"14/09/25","Marcos Ushdi","5585803596","Referidos","Concretado","14/09/25","Auxiliar","24hrs","Concretado","Alejandra Vargas",,,,
+"15/09/25","Berenice Martínez","5531921627","Google","Concretado","15/09/25","Cuidador","24hrs","Concretado","Ariel Morones",,,,
+"18/09/25","Alma Rosa","5554181043","Google","Cotizado","18/09/25","Cuidador","12hrs","Fuera de Presupuesto","Sofia Platas",,,,
+"30/09/25","Juan Pablo Cabrera","5543541080","Referidos","Concretado","29/09/25","Auxiliar","12hrs","Concretado","Alejandra Vargas",,,,
   </script>
 </body>
 </html>

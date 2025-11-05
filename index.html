@@ -665,7 +665,7 @@
 
       if (topCanal) {
         const porcentaje = ((topCanal[1] / total) * 100).toFixed(1);
-        appendInsight(list, `🏆 El canal <span class="font-semibold">${topCanal[0]}</span> aporta el <span class="font-semibold">${porcentaje}%</span> de los leads filtrados.`);
+        appendInsight(list, `<strong>Canal destacado:</strong> ${topCanal[0]} representa el <span class="font-semibold">${porcentaje}%</span> de los leads filtrados.`);
       }
 
       const conversionActual = total ? (concretados.length / total) * 100 : 0;
@@ -680,11 +680,11 @@
         if (prevPeriod.length) {
           const prevConversion = (prevPeriod.filter((item) => item.estatus === 'Concretado').length / prevPeriod.length) * 100;
           const diff = conversionActual - prevConversion;
-          const trend = diff >= 0 ? '↑' : '↓';
-          comparativoTexto = ` (${trend} ${Math.abs(diff).toFixed(1)} pts vs. periodo anterior)`;
+          const sign = diff >= 0 ? '+' : '-';
+          comparativoTexto = ` (variación ${sign}${Math.abs(diff).toFixed(1)} pts vs. periodo anterior)`;
         }
       }
-      appendInsight(list, `📈 La tasa de concretados es <span class="font-semibold">${conversionActual.toFixed(1)}%</span>${comparativoTexto}.`);
+      appendInsight(list, `<strong>Tasa de cierres:</strong> <span class="font-semibold">${conversionActual.toFixed(1)}%</span>${comparativoTexto}.`);
 
       const comercialStats = concretados.reduce((acc, item) => {
         if (!item.comercial) return acc;
@@ -703,7 +703,7 @@
       if (topComercial) {
         const [nombre, stats] = topComercial;
         const conversion = stats.total ? ((stats.concretados / stats.total) * 100).toFixed(1) : '0.0';
-        appendInsight(list, `🧑‍💼 <span class="font-semibold">${nombre}</span> lidera con <span class="font-semibold">${stats.concretados}</span> cierres y una conversión estimada de <span class="font-semibold">${conversion}%</span>.`);
+        appendInsight(list, `<strong>Mejor comercial:</strong> ${nombre} acumula <span class="font-semibold">${stats.concretados}</span> cierres con una conversión estimada de <span class="font-semibold">${conversion}%</span>.`);
       }
 
       const faseCancelacion = cancelados.reduce((acc, item) => {
@@ -714,9 +714,9 @@
       if (Object.keys(faseCancelacion).length) {
         const [faseTop, valor] = Object.entries(faseCancelacion).sort((a, b) => b[1] - a[1])[0];
         const pct = ((valor / cancelados.length) * 100).toFixed(1);
-        appendInsight(list, `⚠️ La fase <span class="font-semibold">${faseTop}</span> concentra el <span class="font-semibold">${pct}%</span> de los cancelados.`);
+        appendInsight(list, `<strong>Atención en fase:</strong> <span class="font-semibold">${faseTop}</span> concentra el <span class="font-semibold">${pct}%</span> de los cancelados.`);
       } else if (sinRespuesta.length) {
-        appendInsight(list, '⚠️ Hay un volumen relevante de leads sin respuesta: considera campañas de seguimiento.');
+        appendInsight(list, '<strong>Seguimiento sugerido:</strong> hay un volumen relevante de leads sin respuesta que podría beneficiarse de nuevas campañas.');
       }
     }
 
